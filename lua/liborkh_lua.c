@@ -141,6 +141,8 @@ static int get_gpu_elf_pool(lua_State* L, liborkh_offload_buffer* fatbin_buf, li
  * 1. number of kernels (integer)
  */
 static int l_get_kernel_count(lua_State *L) {
+    size_t total_kernels = 0;
+
     int status = 0;
     const char *elf_filename = luaL_checkstring(L, 1);
     liborkh_entry_filter_t filter = {0};
@@ -152,20 +154,20 @@ static int l_get_kernel_count(lua_State *L) {
         return status;
     }
 
-    liborkh_gpu_elf_pool_t *pool = NULL;
-    status = get_gpu_elf_pool(L, &fatbin_buf, &filter, &pool);;
-    if (status != 0) {
-        return status;
-    }
+    if (fatbin_buf.kind != UNKNOWN_KIND) {
+        liborkh_gpu_elf_pool_t *pool = NULL;
+        status = get_gpu_elf_pool(L, &fatbin_buf, &filter, &pool);;
+        if (status != 0) {
+            return status;
+        }
 
+        if (liborkh_get_number_kernels_in_pool(pool, &total_kernels) != 0) {
+            liborkh_gpu_elf_pool_free(pool);
+            return luaL_error(L, "failed to get number of kernels in pool");
+        }
 
-    size_t total_kernels = 0;
-    if (liborkh_get_number_kernels_in_pool(pool, &total_kernels) != 0) {
         liborkh_gpu_elf_pool_free(pool);
-        return luaL_error(L, "failed to get number of kernels in pool");
     }
-
-    liborkh_gpu_elf_pool_free(pool);
 
     lua_pushinteger(L, (lua_Integer)total_kernels);
     return 1;
@@ -256,6 +258,10 @@ static int l_get_metadata_buffer(lua_State* L) {
         return status;
     }
 
+    if (fatbin_buf.kind != UNKNOWN_KIND) {
+        return 0;
+    }
+    
     liborkh_gpu_elf_pool_t *pool = NULL;
     status = get_gpu_elf_pool(L, &fatbin_buf, &filter, &pool);;
     if (status != 0) {
