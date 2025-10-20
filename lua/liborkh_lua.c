@@ -247,10 +247,8 @@ static liborkh_status_t set_metadata_buffer(liborkh_gpu_elf_entry_t *entry, void
 static int l_get_metadata_buffer(lua_State* L) {
     int status = 0;
     const char *elf_filename = luaL_checkstring(L, 1);
-
     liborkh_entry_filter_t filter = {0};
     parse_filter_from_table(L, 2, &filter);
-
 
     liborkh_offload_buffer fatbin_buf = {0};
     status = get_offload_buffer(L, elf_filename, &fatbin_buf);
@@ -258,10 +256,10 @@ static int l_get_metadata_buffer(lua_State* L) {
         return status;
     }
 
-    if (fatbin_buf.kind != UNKNOWN_KIND) {
+    if (fatbin_buf.kind == UNKNOWN_KIND) {
         return 0;
     }
-    
+
     liborkh_gpu_elf_pool_t *pool = NULL;
     status = get_gpu_elf_pool(L, &fatbin_buf, &filter, &pool);;
     if (status != 0) {
