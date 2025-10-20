@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(liborkh_lua C)
+project(Orkh_LUA C)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -19,6 +19,7 @@ add_library(liborkh_lua MODULE ${SOURCE})
 
 set_target_properties(liborkh_lua PROPERTIES
     PREFIX "" 
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/lua 
     OUTPUT_NAME "liborkh_lua"
 )
 
@@ -31,10 +32,5 @@ target_include_directories(liborkh_lua PRIVATE
 # ---- Link dependencies ----
 target_link_libraries(liborkh_lua
     PRIVATE
-        liborkh
-)
-
-# ---- install ----
-install(TARGETS liborkh_lua
-    LIBRARY DESTINATION lib/lua
+        orkh
 )
