@@ -192,7 +192,6 @@ static liborkh_status_t set_metadata_buffer(liborkh_gpu_elf_entry_t *entry, void
     uint8_t *metadata = NULL;
     size_t metadata_size = 0;
     Elf * gpu_elf = NULL;
-    size_t num_kernels = 0;
 
     char* gpu_elf_name = liborkh_get_elf_name(entry, ctx->elf_filename);
 
@@ -205,16 +204,16 @@ static liborkh_status_t set_metadata_buffer(liborkh_gpu_elf_entry_t *entry, void
 
     status = liborkh_open_elf_from_memory(entry->elf, entry->elf_size, &gpu_elf);
     if (status != LIBORKH_SUCCESS) {
-        free(gpu_elf_name);
         luaL_error(L, "Cannot open ELF from memory for entry %s\n", gpu_elf_name);
+        free(gpu_elf_name);
         return status;
     }
 
     status = liborkh_get_kernels_metadata(gpu_elf, &metadata, &metadata_size);
     if (status != LIBORKH_SUCCESS) {
-        free(gpu_elf_name);
         liborkh_close_elf(gpu_elf);
         luaL_error(L, "Cannot get kernel metadata from ELF in entry %s\n", gpu_elf_name);
+        free(gpu_elf_name);
         return status;
     }
 
