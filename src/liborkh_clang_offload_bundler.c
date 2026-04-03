@@ -66,6 +66,41 @@ static liborkh_status_t __liborkh_parse_entry_id(const uint8_t* buf, const size_
     return LIBORKH_SUCCESS;
 }
 
+// https://rocm.docs.amd.com/projects/llvm-project/en/latest/LLVM/clang/html/ClangOffloadBundler.html#id19
+liborkh_status_t liborkh_decode_compress_clang_offload_bundler_metadata(const uint8_t *buf, const size_t size, size_t* pos) 
+{
+    if (memcmp(buf + *pos, COMPRESSION_CLANG_OFFLOAD_BUNDLER_MAGIC, COMPRESSION_CLANG_OFFLOAD_BUNDLER_MAGIC_SIZE) == 0) {
+        *pos += COMPRESSION_CLANG_OFFLOAD_BUNDLER_MAGIC_SIZE;
+        uint16_t version = *(uint16_t *)(buf + *pos);
+        *pos += sizeof(uint16_t);
+        uint16_t compression_type = *(uint16_t *)(buf + *pos);
+        *pos += sizeof(uint16_t);
+        (*pos)++;
+        uint64_t compressed_size = 0;
+        uint64_t uncompressed_size = 0;
+        if (version == 2) {
+            compressed_size = *(uint32_t *)(buf + *pos);
+            *pos += sizeof(uint32_t);
+            uncompressed_size = *(uint32_t *)(buf + *pos);
+            *pos += sizeof(uint32_t);
+        } else if (version == 3) {
+            compressed_size = *(uint64_t *)(buf + *pos);
+            *pos += sizeof(uint64_t);
+            uncompressed_size = *(uint64_t *)(buf + *pos);
+            *pos += sizeof(uint64_t);
+        } else {
+            liborkh_log_warn("Unknown compressed bundle version %u. Skipping entry.\n", version);
+        }
+        uint64_t hash = *(uint64_t *)(buf + *pos);
+        *pos += sizeof(uint64_t);
+
+        liborkh_log_warn("Compressed code objects are not yet supported (version %u, method %u, hash %lx). Skipping entry.\n", version, compression_type, (unsigned long)hash);
+        *pos += compressed_size; // skip compressed data
+        return LIBORKH_ERROR_UNKNOWN;
+
+    }
+    return LIBORKH_SUCCESS;
+}
 
 liborkh_status_t liborkh_decode_clang_offload_bundler(const uint8_t *buf, const size_t size, liborkh_gpu_elf_pool_t* pool, liborkh_entry_filter_t* filter)
 {
@@ -76,6 +111,10 @@ liborkh_status_t liborkh_decode_clang_offload_bundler(const uint8_t *buf, const 
     size_t bundle_count = 0;
 
     while (pos + CLANG_OFFLOAD_BUNDLER_MAGIC_SIZE <= size) {
+        if (liborkh_decode_compress_clang_offload_bundler_metadata(buf, size, &pos) != LIBORKH_SUCCESS) {
+            continue;
+        }
+
         // Find next bundle magic
         if (memcmp(buf + pos, CLANG_OFFLOAD_BUNDLER_MAGIC, CLANG_OFFLOAD_BUNDLER_MAGIC_SIZE) != 0) {
             pos++;
