@@ -1,17 +1,14 @@
-cmake_minimum_required(VERSION 3.16)
-project(Orkh C)
+cmake_minimum_required(VERSION 3.10)
+
+project(Orkh LANGUAGES C VERSION 1.0.0)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # ---- Include directories ----
-include_directories(
-    ${PROJECT_SOURCE_DIR}/include
-)
+include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # ---- Source files for the shared library ----
-FILE(GLOB_RECURSE ORKH_SRC CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
-)
+FILE(GLOB_RECURSE ORKH_SRC CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 
 # ---- Create shared library ----
 add_library(orkh SHARED ${ORKH_SRC})
@@ -33,7 +30,6 @@ function(add_liborkh_test name source)
     target_link_libraries(${name} PRIVATE orkh)
     target_include_directories(${name} PRIVATE include)
 endfunction()
-
 
 add_liborkh_test(extract_gpu_elf        tests/main_extract_gpu_elf.c)
 add_liborkh_test(extract_gpu_fatbin     tests/main_extract_gpu_fatbin.c)

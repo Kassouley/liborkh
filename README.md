@@ -22,7 +22,7 @@ More information :
 
 ## Build Instructions
 
-Requires **CMake >= 3.16** and **libelf**.
+Requires **CMake >= 3.10** and **libelf**.
 
 ```bash
 # Build the library and test binaries
