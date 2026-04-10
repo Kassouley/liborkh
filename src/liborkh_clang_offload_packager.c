@@ -12,33 +12,39 @@ liborkh_status_t liborkh_decode_clang_offload_packager(const uint8_t *buf, const
     size_t pos = 0;
 
     while (pos + sizeof(__liborkh_offload_binary_header_t) <= size) {
-        __liborkh_offload_binary_header_t *hdr = (__liborkh_offload_binary_header_t *)(buf + pos);
-        
-        if (hdr->magic != CLANG_OFFLOAD_PACKAGER_MAGIC) {
+
+        size_t magic_pos = pos;
+        uint32_t magic = read_u32(buf, &magic_pos);
+
+        if (magic != CLANG_OFFLOAD_PACKAGER_MAGIC) {
             pos++;
             continue; // scan forward for next possible header
         }
 
-        if (hdr->version != CLANG_OFFLOAD_PACKAGER_HEADER_VERSION) {
-            liborkh_log_warn("Unsupported version: %u\n", hdr->version);
+        __liborkh_offload_binary_header_t hdr;
+        memcpy(&hdr, buf + pos, sizeof(hdr));
+
+        if (hdr.version != CLANG_OFFLOAD_PACKAGER_HEADER_VERSION) {
+            liborkh_log_warn("Unsupported version: %u\n", hdr.version);
             pos += 4;
             continue;
         }
 
-        LIBORKH_CHECK_CALL(check_bounds(pos, hdr->size, size), "Corrupted header (out of bounds)\n");
+        LIBORKH_CHECK_CALL(check_bounds(pos, hdr.size, size), "Corrupted header (out of bounds)\n");
 
         // Found one valid binary blob
         size_t blob_start = pos;
-        size_t blob_end   = pos + hdr->size;
+        size_t blob_end   = pos + hdr.size;
 
         // Locate offload entry table
-        LIBORKH_CHECK_CALL(check_bounds(0, hdr->entry_offset + hdr->entry_size, hdr->size), "Invalid entry table bounds\n");
+        LIBORKH_CHECK_CALL(check_bounds(0, hdr.entry_offset + hdr.entry_size, hdr.size), "Invalid entry table bounds\n");
     
-        __liborkh_offload_entry_t *entry = (__liborkh_offload_entry_t *)(buf + blob_start + hdr->entry_offset);
+        __liborkh_offload_entry_t entry;
+        memcpy(&entry, buf + blob_start + hdr.entry_offset, sizeof(entry));
 
-        LIBORKH_CHECK_CALL(check_bounds(blob_start, hdr->entry_offset + sizeof(*entry), blob_end), "Entry header out of bounds\n");
+        LIBORKH_CHECK_CALL(check_bounds(blob_start, hdr.entry_offset + sizeof(entry), blob_end), "Entry header out of bounds\n");
  
-        if (entry->image_size == 0) {
+        if (entry.image_size == 0) {
             pos = blob_end;
             continue;
         }
@@ -47,14 +53,17 @@ liborkh_status_t liborkh_decode_clang_offload_packager(const uint8_t *buf, const
         LIBORKH_CHECK_CALL(liborkh_new_entry(&out), "Failed to get new entry\n");
      
         out->id = 0;
-        out->img = (image_kind_t) entry->image_kind;
-        out->ofk = (offload_kind_t) entry->offload_kind;
+        out->img = (image_kind_t) entry.image_kind;
+        out->ofk = (offload_kind_t) entry.offload_kind;
 
         // Extract target ID from string table (look for key == "triple" or "arch")
-        if (entry->num_strings > 0) {
-            size_t str_table_off = blob_start + entry->string_offset;
-            __liborkh_offload_string_entry_t *str_entries = (__liborkh_offload_string_entry_t *)(buf + str_table_off);
-            for (uint64_t i = 0; i < entry->num_strings; i++) {
+        if (entry.num_strings > 0) {
+            size_t str_table_off = blob_start + entry.string_offset;
+            __liborkh_offload_string_entry_t *str_entries = (__liborkh_offload_string_entry_t*) malloc(sizeof(__liborkh_offload_string_entry_t) * entry.num_strings);
+            LIBORKH_CHECK_ALLOC(str_entries);
+            memcpy(str_entries, buf + str_table_off, sizeof(__liborkh_offload_string_entry_t) * entry.num_strings);
+
+            for (uint64_t i = 0; i < entry.num_strings; i++) {
                 size_t key_off = blob_start + str_entries[i].key_offset;
                 size_t val_off = blob_start + str_entries[i].value_offset;
                 
@@ -79,9 +88,9 @@ liborkh_status_t liborkh_decode_clang_offload_packager(const uint8_t *buf, const
 
         if (liborkh_is_entry_matching_filter(out, filter)) {
             // Extract ELF image
-            size_t image_off = blob_start + entry->image_offset;
-            if (check_bounds(image_off, entry->image_size, size) == LIBORKH_SUCCESS) {
-                out->elf_size = entry->image_size;
+            size_t image_off = blob_start + entry.image_offset;
+            if (check_bounds(image_off, entry.image_size, size) == LIBORKH_SUCCESS) {
+                out->elf_size = entry.image_size;
                 out->elf = malloc(out->elf_size);
                 if (out->elf) {
                     memcpy(out->elf, buf + image_off, out->elf_size);
