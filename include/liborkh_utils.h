@@ -49,6 +49,7 @@ typedef enum {
     LIBORKH_ERROR_SECTION_NOT_FOUND,
     LIBORKH_ERROR_METADATA_NOT_FOUND,
     LIBORKH_ERROR_IO,
+    LIBORKH_ERROR_DECOMPRESSION_FAILED,
     LIBORKH_ERROR_UNKNOWN
 } liborkh_status_t;
 
@@ -129,6 +130,29 @@ static inline bool liborkh_is_entry_matching_filter(const liborkh_gpu_elf_entry_
 
     return true;
 }
+
+static inline uint16_t read_u16(const uint8_t *buf, size_t *pos) {
+    uint16_t v;
+    memcpy(&v, buf + *pos, sizeof(v));
+    *pos += sizeof(v);
+    return v;
+}
+
+static inline uint32_t read_u32(const uint8_t *buf, size_t *pos) {
+    uint32_t v;
+    memcpy(&v, buf + *pos, sizeof(v));
+    *pos += sizeof(v);
+    return v;
+}
+
+static inline uint64_t read_u64(const uint8_t *buf, size_t *pos) {
+    uint64_t v;
+    memcpy(&v, buf + *pos, sizeof(v));
+    *pos += sizeof(v);
+    return v;
+}
+
+#define is_magic(buf, pos, magic) (memcmp(buf + pos, magic, sizeof(magic) - 1) == 0)
 
 
 #endif // LIBORKH_UTILS_H
