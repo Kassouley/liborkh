@@ -18,7 +18,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBELF REQUIRED libelf)
 
 target_include_directories(orkh PUBLIC  ${LIBELF_INCLUDE_DIRS})
-target_link_libraries     (orkh         ${LIBELF_LIBRARIES})
+target_link_libraries     (orkh         zstd z ${LIBELF_LIBRARIES})
 target_compile_options    (orkh PRIVATE ${LIBELF_CFLAGS_OTHER})
 
 # ---- Lua module ----
